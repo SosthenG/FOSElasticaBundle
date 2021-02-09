@@ -73,7 +73,19 @@ class Client extends BaseClient
         if (isset($responseData['took'], $responseData['hits'])) {
             $this->logQuery($path, $method, $data, $query, $response->getQueryTime(), $response->getEngineTime(), $responseData['hits']['total']['value'] ?? 0);
         } else {
-            $this->logQuery($path, $method, $data, $query, $response->getQueryTime(), 0, 0);
+            $itemCount = 0;
+            if ($method === 'GET' && !empty($responseData['found'])) {
+                $itemCount = 1;
+            } elseif (strpos($path, '_mget') !== false && !empty($responseData['docs'])) {
+                $foundDocs = array_filter(
+                    $responseData['docs'],
+                    function ($doc) {
+                        return !empty($doc['found']);
+                    }
+                );
+                $itemCount = count($foundDocs);
+            }
+            $this->logQuery($path, $method, $data, $query, $response->getQueryTime(), 0, $itemCount);
         }
 
         if ($this->stopwatch) {
